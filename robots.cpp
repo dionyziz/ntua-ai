@@ -53,7 +53,12 @@ vector< Edge > E;
 class CompareEdges {
     public:
         bool operator() ( const int &a, const int &b ) {
-            return E[ a ].distance + E[ a ].heuristic < E[ b ].distance + E[ b ].heuristic;
+            int diff = ( E[ b ].distance + E[ b ].heuristic ) - ( E[ a ].distance + E[ a ].heuristic );
+
+            if ( diff == 0 ) {
+                return a < b;
+            }
+            return diff > 0;
         }
 };
 
@@ -75,20 +80,20 @@ void enqueue( int a ) {
 
     if ( !validPoint( e.to ) ) {
         // to is out of bounds
-        printf( "( %i, %i ) is out of bounds.\n", e.to.x, e.to.y );
+        printf( "Out of bounds.\n", e.to.x, e.to.y );
         return;
     }
     if ( obstacle[ e.to.x ][ e.to.y ] ) {
         // to is obstacle
-        printf( "( %i, %i ) is an obstacle.\n", e.to.x + 1, e.to.y + 1 );
+        printf( "Obstacle.\n", e.to.x + 1, e.to.y + 1 );
         return;
     }
     if ( visited.find( e.to ) != visited.end() ) {
         // to is already visited
-        printf( "( %i, %i ) is already visited.\n", e.to.x + 1, e.to.y + 1 );
+        printf( "Already visited.\n", e.to.x + 1, e.to.y + 1 );
         return;
     }
-    printf( "Enqueuing edge (%i, %i) => (%i, %i)\n", e.from.x, e.from.y, e.to.x, e.to.y );
+    printf( "Enqueued (%i, %i) with id %i.\n", e.to.x + 1, e.to.y + 1, a );
     assert( e.distance >= 0 );
     assert( e.distance <= mapSize.x * mapSize.y );
     assert( e.heuristic >= 0 );
@@ -102,7 +107,7 @@ void enqueue( int a ) {
 Edge aStar( Point source, Point target ) {
     int iterations = 0;
 
-    printf( "Target is (%i, %i)\n", target.x, target.y );
+    printf( "Target is (%i, %i)\n", target.x + 1, target.y + 1 );
 
     assert( validPoint( source ) );
     assert( validPoint( target ) );
@@ -112,6 +117,7 @@ Edge aStar( Point source, Point target ) {
     frontier.insert( 0 );
 
     while ( !frontier.empty() ) {
+        printf( "Frontier contains %i edges.\n", frontier.size() );
         set< int, CompareEdges >::iterator it = frontier.begin();
         int a = *it;
         Edge e = E[ a ];
@@ -123,6 +129,7 @@ Edge aStar( Point source, Point target ) {
             // Because the heuristic we ues is admissible,
             // the past visit is always going to better than this one,
             // so skip it.
+            printf( "(%i, %i) has already been visited.\n", e.to.x, e.to.y );
             continue;
         }
         printf( "At (%i, %i).\n", e.to.x + 1, e.to.y + 1 );
@@ -140,17 +147,15 @@ Edge aStar( Point source, Point target ) {
         // enqueue all cells adjacent to q
         for ( int x = e.to.x - 1; x <= e.to.x + 1; x += 2 ) {
             Point next = makePoint( x, e.to.y );
-            printf( "Ready to enqueue (%i, %i) => (%i, %i)\n", e.to.x + 1, e.to.y + 1, x + 1, e.to.y + 1 );
+            printf( "(%i, %i) => (%i, %i): ", e.to.x + 1, e.to.y + 1, x + 1, e.to.y + 1 );
             E.push_back( Edge( a, e.to, next, manhattan( next, target ), e.distance + 1 ) );
             enqueue( E.size() - 1 );
-            printf( "Enqueued from (%i, %i)\n", e.to.x + 1, e.to.y + 1 );
         }
         for ( int y = e.to.y - 1; y <= e.to.y + 1; y += 2 ) {
             Point next = makePoint( e.to.x, y );
-            printf( "Ready to enqueue (%i, %i) => (%i, %i)\n", e.to.x + 1, e.to.y + 1, e.to.x + 1, y + 1 );
+            printf( "(%i, %i) => (%i, %i): ", e.to.x + 1, e.to.y + 1, e.to.x + 1, y + 1 );
             E.push_back( Edge( a, e.to, next, manhattan( next, target ), e.distance + 1 ) );
             enqueue( E.size() - 1 );
-            printf( "Enqueued from (%i, %i)\n", e.to.x + 1, e.to.y + 1 );
         }
         // it's impossible to iterate more than the map size if the algorithm is implemented correctly
         ++iterations;
@@ -199,16 +204,24 @@ int main() {
     assert( !obstacle[ A.x ][ A.y ] );
     assert( !obstacle[ B.x ][ B.y ] );
 
+    printf( "Running A* for robot A:\n" );
     Edge APath = aStar( target, A );
-    // Edge BPath = aStar( target, B );
+    printf( "Running A* for robot B:\n" );
+    Edge BPath = aStar( target, B );
 
     assert( APath.to == A );
-    // assert( BPath.from == B );
+    assert( BPath.to == B );
 
     printf( "Robot A path:\n" );
     while ( APath.from != APath.to ) {
-        printf( "( %i, %i )\n", APath.from.x + 1, APath.from.y + 1 );
+        printf( "(%i, %i)\n", APath.from.x + 1, APath.from.y + 1 );
         APath = E[ APath.parent ];
+    }
+
+    printf( "Robot B path:\n" );
+    while ( BPath.from != BPath.to ) {
+        printf( "(%i, %i)\n", BPath.from.x + 1, BPath.from.y + 1 );
+        BPath = E[ BPath.parent ];
     }
 
     return 0;
