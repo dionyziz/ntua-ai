@@ -6,15 +6,19 @@
 
 using namespace std;
 
-class Point {
-    public:
-        int x;
-        int y;
-
-        Point() {};
-        Point( int x, int y ):
-            x( x ), y( y ) {};
+struct Point {
+    int x;
+    int y;
 };
+
+Point makePoint( int x, int y ) {
+    Point ret;
+
+    ret.x = x;
+    ret.y = y;
+
+    return ret;
+}
 
 bool operator <( Point a, Point b ) {
     if ( a.x != b.x ) {
@@ -27,84 +31,127 @@ bool operator ==( Point a, Point b ) {
     return a.x == b.x && a.y == b.y;
 }
 
-class Node {
-    public:
-        Node* parent;
-        Point location;
-        int heuristic;
-        int distance;
+bool operator !=( Point a, Point b ) {
+    return !( a == b );
+}
 
-        Node( Point location, int heuristic, int distance ):
-            location( location ), heuristic( heuristic ), distance( distance ) {};
+class Edge {
+    public:
+        const Edge* parent;
+        Point from;
+        Point to;
+        int heuristic; // approximation of how far the "to" end of Edge is from the target
+        int distance; // actual distance between the "to" end of the Edge and the source
+
+        Edge( const Edge* parent, Point from, Point to, int heuristic, int distance ):
+            parent( parent ), from( Point( from ) ), to( Point( to ) ),
+            heuristic( heuristic ), distance( distance ) {};
 };
 
-bool operator <( Node a, Node b ) {
-    // better nodes are the ones with the minimum heuristic value
-    return a.heuristic > b.heuristic;
+bool operator <( Edge a, Edge b ) {
+    // better edges are the ones with the minimum estimated value
+    return a.distance + a.heuristic > b.distance + b.heuristic;
 }
 
 Point mapSize;
-priority_queue< Node > frontier;
+priority_queue< Edge > frontier;
 set< Point > visited;
 vector< vector< bool > > obstacle;
 
-int manhattan( Point source, Point target ) {
-    return abs( ( double )source.x - target.x ) + abs( ( double )source.y - target.y );
+bool validPoint( Point a ) {
+    return a.x >= 0 && a.y >= 0 && a.x < mapSize.x && a.y < mapSize.y;
 }
 
-void enqueue( Node from,
-              Point to,
-              Point target ) {
-    if (    to.x < 0
-         || to.y < 0
-         || to.x >= mapSize.x
-         || to.y >= mapSize.y // out of bounds
-         || visited.find( to ) != visited.end()
-         || obstacle[ to.y ][ to.x ] ) {
+int manhattan( Point source, Point target ) {
+    return 0; // abs( ( double )source.x - target.x ) + abs( ( double )source.y - target.y );
+}
+
+void enqueue( const Edge* e ) {
+    if (    !validPoint( e->to ) // to is out of bounds
+         || obstacle[ e->to.y ][ e->to.x ] // to is obstacle
+         || visited.find( e->to ) != visited.end() ) { // to is already visited
         return;
     }
-    Node next(
-        to,
-        from.distance + 1 + manhattan( to, target ),
-        from.distance + 1
-    );
-    next.parent = &from;
-    frontier.push( next );
+    assert( e->distance >= 0 );
+    assert( e->distance <= mapSize.x * mapSize.y );
+    assert( e->heuristic >= 0 );
+
+    assert( validPoint( e->from ) );
+
+    assert( e->parent != 0 );
+    frontier.push( *e );
+
+    assert( !frontier.empty() );
 }
 
-Node A_star( Point source, Point target ) {
-    frontier.push( Node( source, manhattan( source, target ), 0 ) );
+Edge aStar( Point source, Point target ) {
+    int iterations = 0;
+
+    assert( validPoint( source ) );
+    assert( validPoint( target ) );
+
+    // seed the frontier with a circular edge connecting the source with the source
+    // FIXME: deallocate edges
+    frontier.push( *( new Edge( NULL, source, source, manhattan( source, target ), 0 ) ) );
 
     while ( !frontier.empty() ) {
-        Node q = frontier.top();
+        const Edge* e = &frontier.top();
+        assert( validPoint( e->from ) );
+        assert( validPoint( e->to ) );
         frontier.pop();
-        if ( q.location == target ) {
+        printf( "At (%i, %i).\n", e->to.x, e->to.y );
+        if ( e->to == target ) {
             // arrived on target
-            return q;
+            return *e;
         }
-        visited.insert( q.location );
-        for ( int x = q.location.x - 1; x <= q.location.x + 1; x += 2 ) {
-            enqueue( q, Point( x, q.location.y ), target );
+        visited.insert( e->to );
+        // enqueue all cells adjacent to q
+        // FIXME: deallocate edges
+        for ( int x = e->to.x - 1; x <= e->to.x + 1; x += 2 ) {
+            Point next = makePoint( x, e->from.y );
+            enqueue( new Edge( e, e->to, next, manhattan( next, target ), e->distance + 1 ) );
         }
-        for ( int y = q.location.y - 1; y <= q.location.y + 1; y += 2 ) {
-            enqueue( q, Point( q.location.x, y ), target );
+        for ( int y = e->to.y - 1; y <= e->to.y + 1; y += 2 ) {
+            Point next = makePoint( e->from.x, y );
+            enqueue( new Edge( e, e->to, next, manhattan( next, target ), e->distance + 1 ) );
         }
+        ++iterations;
+        assert( iterations <= mapSize.x * mapSize.y );
     }
+
+    assert( false ); // target should not be unreachable
 }
 
 int main() {
-    int X, Y;
-    Point mapSize, A, B, target;
+    Point A, B, target;
 
     scanf( "%i %i %i %i %i %i %i %i\n",
             &mapSize.x, &mapSize.y, &A.x, &A.y, &B.x, &B.y, &target.x, &target.y );
 
+    // make coordinates 0-based
+    --A.x; --A.y; --B.x; --B.y; --target.x; --target.y;
+
+    assert( mapSize.x > 0 );
+    assert( mapSize.y > 0 );
+    assert( mapSize.x <= 400000 );
+    assert( mapSize.y <= 400000 );
+
+    assert( validPoint( A ) );
+    assert( validPoint( B ) );
+    assert( validPoint( target ) );
+
+    for ( int x = 0; x < mapSize.x; ++x ) {
+        obstacle.push_back( vector< bool >( mapSize.y ) );
+    }
+
     for ( int y = 0; y < mapSize.y; ++y ) {
-        obstacle.push_back( vector< bool >() );
         for ( int x = 0; x < mapSize.x; ++x ) {
+            // make sure we have allocated this cell's memory correctly
+            assert( obstacle[ x ][ y ] || !obstacle[ x ][ y ] );
             char c;
             scanf( "%c", &c );
-            obstacle[ y ].push_back( c == 'X' );
+            assert( c == 'X' || c == 'O' );
+            obstacle[ x ][ y ] = c == 'X';
         }
         scanf( "\n" );
     }
@@ -114,8 +161,24 @@ int main() {
     assert( !obstacle[ A.x ][ A.y ] );
     assert( !obstacle[ B.x ][ B.y ] );
 
-    A_star( A, target );
-    A_star( B, target );
+    Edge APath = aStar( target, A );
+    Edge BPath = aStar( target, B );
+
+    assert( APath.from == A );
+    assert( BPath.from == B );
+
+    printf( "Robot A path:\n" );
+    while ( APath.from != APath.to ) {
+        printf( "( %i, %i )\n", APath.from.x + 1, APath.from.y + 1 );
+        assert( APath.parent != 0 );
+        APath = *( APath.parent );
+    }
+    printf( "\nRobot B path:\n" );
+    while ( BPath.from != BPath.to ) {
+        printf( "( %i, %i )\n", BPath.from.x + 1, BPath.from.y + 1 );
+        assert( BPath.parent != 0 );
+        BPath = *( BPath.parent );
+    }
 
     return 0;
 }
