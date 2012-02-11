@@ -180,15 +180,84 @@ list< Edge > aStar( Point source, Point target ) {
     assert( false ); // target should not be unreachable
 }
 
+const int LEGEND_PADDING = 10;
+const int LEGEND_LINE_HEIGHT = 18;
+const int SCALE_W = 30;
+const int SCALE_H = 30;
+const int LEGEND_H = 200;
+const int BORDER_W = 1;
+
+void drawLegend( cairo_t* cr, int y ) {
+    // draw the legend
+    int x = LEGEND_PADDING;
+
+    cairo_set_line_width( cr, 1.0 );
+    cairo_set_source_rgb( cr, 0, 0, 0 );
+    cairo_move_to( cr, x, y );
+    cairo_set_font_size( cr, 14.0 );
+    cairo_text_path( cr, "National Technical University of Athens" );
+    y += LEGEND_LINE_HEIGHT;
+    cairo_move_to( cr, x, y );
+    cairo_text_path( cr, "Artificial Intelligence 2011 - 2012" );
+    y += LEGEND_LINE_HEIGHT;
+    cairo_move_to( cr, x, y );
+    cairo_text_path( cr, "Dionysis Zindros <dionyziz@gmail.com>" );
+    cairo_fill( cr );
+
+    y += LEGEND_LINE_HEIGHT;
+    cairo_set_source_rgb( cr, 0, 0, 0 );
+    cairo_rectangle( cr, x, y, LEGEND_LINE_HEIGHT, LEGEND_LINE_HEIGHT );
+    cairo_fill( cr );
+    cairo_set_source_rgb( cr, 0, 0, 0 );
+    cairo_rectangle( cr, x, y, LEGEND_LINE_HEIGHT, LEGEND_LINE_HEIGHT );
+    cairo_stroke( cr );
+    cairo_move_to( cr, x + LEGEND_LINE_HEIGHT + 4, y + LEGEND_LINE_HEIGHT - 4 );
+    cairo_text_path( cr, "Obstacle" );
+    cairo_fill( cr );
+
+    y += LEGEND_LINE_HEIGHT + 5;
+    cairo_set_source_rgb( cr, 1, 0, 0 );
+    cairo_rectangle( cr, x, y, LEGEND_LINE_HEIGHT, LEGEND_LINE_HEIGHT );
+    cairo_fill( cr );
+    cairo_set_source_rgb( cr, 0, 0, 0 );
+    cairo_rectangle( cr, x, y, LEGEND_LINE_HEIGHT, LEGEND_LINE_HEIGHT );
+    cairo_stroke( cr );
+    cairo_move_to( cr, x + LEGEND_LINE_HEIGHT + 4, y + LEGEND_LINE_HEIGHT - 4 );
+    cairo_set_source_rgb( cr, 0, 0, 0 );
+    cairo_text_path( cr, "Robot 1" );
+    cairo_fill( cr );
+
+    y += LEGEND_LINE_HEIGHT + 5;
+    cairo_set_source_rgb( cr, 0, 1, 0 );
+    cairo_rectangle( cr, x, y, LEGEND_LINE_HEIGHT, LEGEND_LINE_HEIGHT );
+    cairo_fill( cr );
+    cairo_set_source_rgb( cr, 0, 0, 0 );
+    cairo_rectangle( cr, x, y, LEGEND_LINE_HEIGHT, LEGEND_LINE_HEIGHT );
+    cairo_stroke( cr );
+    cairo_move_to( cr, x + LEGEND_LINE_HEIGHT + 4, y + LEGEND_LINE_HEIGHT - 4 );
+    cairo_set_source_rgb( cr, 0, 0, 0 );
+    cairo_text_path( cr, "Robot 2" );
+    cairo_fill( cr );
+}
+
 void visualize( list< Edge > APath, list< Edge > BPath ) {
     set< Edge > common;
-    const int SCALE_W = 30;
-    const int SCALE_H = 30;
-    const int W = mapSize.x * SCALE_W;
-    const int H = mapSize.y * SCALE_H;
+    const int W = mapSize.x * SCALE_W + 2 * BORDER_W;
+    const int H = mapSize.y * SCALE_H + 2 * BORDER_W + LEGEND_H;
+
     cairo_surface_t* surface = cairo_image_surface_create( CAIRO_FORMAT_ARGB32, W, H );
     cairo_t* cr = cairo_create( surface );
 
+    drawLegend( cr, H - LEGEND_H + LEGEND_PADDING + LEGEND_LINE_HEIGHT );
+
+    // draw the border
+    cairo_set_source_rgb( cr, 0.1, 0.2, 0.4 );
+    cairo_set_line_width( cr, BORDER_W );
+    cairo_rectangle( cr, BORDER_W / 2, BORDER_W / 2, W - BORDER_W, H - BORDER_W - LEGEND_H );
+    cairo_stroke( cr );
+
+    cairo_save( cr );
+    cairo_translate( cr, BORDER_W, BORDER_W );
     cairo_scale( cr, SCALE_W, SCALE_H );
 
     // fill the image background with whiteness
