@@ -2,7 +2,10 @@
 #include <cassert>
 #include <cmath>
 #include <set>
-#include <queue>
+#include <list>
+#include <vector>
+
+#include <cairo.h>
 
 using namespace std;
 
@@ -80,20 +83,20 @@ void enqueue( int a ) {
 
     if ( !validPoint( e.to ) ) {
         // to is out of bounds
-        // printf( "Out of bounds.\n", e.to.x, e.to.y );
+        printf( "Out of bounds.\n" );
         return;
     }
     if ( obstacle[ e.to.x ][ e.to.y ] ) {
         // to is obstacle
-        // printf( "Obstacle.\n", e.to.x + 1, e.to.y + 1 );
+        printf( "Obstacle.\n" );
         return;
     }
     if ( visited.find( e.to ) != visited.end() ) {
         // to is already visited
-        // printf( "Already visited.\n", e.to.x + 1, e.to.y + 1 );
+        printf( "Already visited.\n" );
         return;
     }
-    // printf( "Enqueued (%i, %i) with id %i.\n", e.to.x + 1, e.to.y + 1, a );
+    printf( "Enqueued (%i, %i) with id %i.\n", e.to.x + 1, e.to.y + 1, a );
     assert( e.distance >= 0 );
     assert( e.distance <= mapSize.x * mapSize.y );
     assert( e.heuristic >= 0 );
@@ -104,10 +107,14 @@ void enqueue( int a ) {
     assert( !frontier.empty() );
 }
 
-Edge aStar( Point source, Point target ) {
+list< Edge > aStar( Point source, Point target ) {
+    list< Edge > ret;
     int iterations = 0;
 
     // printf( "Target is (%i, %i)\n", target.x + 1, target.y + 1 );
+    assert( E.empty() );
+    assert( frontier.empty() );
+    assert( visited.empty() );
 
     assert( validPoint( source ) );
     assert( validPoint( target ) );
@@ -132,10 +139,16 @@ Edge aStar( Point source, Point target ) {
             // printf( "(%i, %i) has already been visited.\n", e.to.x, e.to.y );
             continue;
         }
-        // printf( "At (%i, %i).\n", e.to.x + 1, e.to.y + 1 );
+        printf( "At (%i, %i).\n", e.to.x + 1, e.to.y + 1 );
         if ( e.to == target ) {
             // arrived on target
             // clean-up and return
+
+            while ( e.from != e.to ) {
+                ret.push_back( e );
+                e = E[ e.parent ];
+            }
+            ret.push_back( e );
 
             E.clear();
             visited.clear();
@@ -143,19 +156,19 @@ Edge aStar( Point source, Point target ) {
 
             printf( "A* algorithm completed in %i steps.\n", iterations );
 
-            return e;
+            return ret;
         }
         visited.insert( e.to );
         // enqueue all cells adjacent to q
         for ( int x = e.to.x - 1; x <= e.to.x + 1; x += 2 ) {
             Point next = makePoint( x, e.to.y );
-            // printf( "(%i, %i) => (%i, %i): ", e.to.x + 1, e.to.y + 1, x + 1, e.to.y + 1 );
+            printf( "(%i, %i) => (%i, %i): ", e.to.x + 1, e.to.y + 1, x + 1, e.to.y + 1 );
             E.push_back( Edge( a, e.to, next, manhattan( next, target ), e.distance + 1 ) );
             enqueue( E.size() - 1 );
         }
         for ( int y = e.to.y - 1; y <= e.to.y + 1; y += 2 ) {
             Point next = makePoint( e.to.x, y );
-            // printf( "(%i, %i) => (%i, %i): ", e.to.x + 1, e.to.y + 1, e.to.x + 1, y + 1 );
+            printf( "(%i, %i) => (%i, %i): ", e.to.x + 1, e.to.y + 1, e.to.x + 1, y + 1 );
             E.push_back( Edge( a, e.to, next, manhattan( next, target ), e.distance + 1 ) );
             enqueue( E.size() - 1 );
         }
@@ -165,6 +178,56 @@ Edge aStar( Point source, Point target ) {
     }
 
     assert( false ); // target should not be unreachable
+}
+
+void visualize( list< Edge > APath, list< Edge > BPath ) {
+    set< Edge > common;
+    const int SCALE_W = 30;
+    const int SCALE_H = 30;
+    const int W = mapSize.x * SCALE_W;
+    const int H = mapSize.y * SCALE_H;
+    cairo_surface_t* surface = cairo_image_surface_create( CAIRO_FORMAT_ARGB32, W, H );
+    cairo_t* cr = cairo_create( surface );
+
+    cairo_scale( cr, SCALE_W, SCALE_H );
+
+    // fill the image background with whiteness
+    cairo_set_source_rgb( cr, 1, 1, 1 );
+    cairo_rectangle( cr, 0, 0, mapSize.x, mapSize.y );
+    cairo_fill( cr );
+
+    // draw obstacles as black
+    cairo_set_source_rgb( cr, 0, 0, 0 );
+
+    for ( int x = 0; x < mapSize.x; ++x ) {
+        for ( int y = 0; y < mapSize.y; ++y ) {
+            if ( obstacle[ x ][ y ] ) {
+                cairo_rectangle( cr, x, y, 1, 1 );
+                cairo_fill( cr );
+            }
+        }
+    }
+
+    // draw the paths followed by the robots
+    cairo_set_line_width( cr, 0.2 );
+
+    // robot A is red
+    cairo_set_source_rgb( cr, 1, 0, 0 );
+    cairo_move_to( cr, APath.begin()->from.x + 0.5, APath.begin()->from.y + 0.5 );
+    for ( list< Edge >::iterator it = APath.begin(); it != APath.end(); ++it ) {
+        cairo_line_to( cr, it->to.x + 0.5, it->to.y + 0.5 );
+    }
+    cairo_stroke( cr );
+
+    // robot B is green
+    cairo_set_source_rgb( cr, 0, 1, 0 );
+    cairo_move_to( cr, BPath.begin()->from.x + 0.5, BPath.begin()->from.y + 0.5 );
+    for ( list< Edge >::iterator it = BPath.begin(); it != BPath.end(); ++it ) {
+        cairo_line_to( cr, it->to.x + 0.5, it->to.y + 0.5 );
+    }
+    cairo_stroke( cr );
+
+    cairo_surface_write_to_png( surface, "robots.png" );
 }
 
 int main() {
@@ -207,25 +270,23 @@ int main() {
     assert( !obstacle[ B.x ][ B.y ] );
 
     printf( "Running A* for robot A:\n" );
-    Edge APath = aStar( target, A );
+    list< Edge > APath = aStar( target, A );
     printf( "Running A* for robot B:\n" );
-    Edge BPath = aStar( target, B );
-
-    assert( APath.to == A );
-    assert( BPath.to == B );
+    list< Edge > BPath = aStar( target, B );
 
     printf( "Robot A path:\n" );
-    while ( APath.from != APath.to ) {
-        printf( "(%i, %i)\n", APath.from.x + 1, APath.from.y + 1 );
-        APath = E[ APath.parent ];
+    for ( list< Edge >::iterator it = APath.begin(); it != APath.end(); ++it ) {
+        printf( "(%i, %i)\n", it->from.x + 1, it->from.y + 1 );
     }
 
     printf( "\nRobot B path:\n" );
-    while ( BPath.from != BPath.to ) {
-        printf( "(%i, %i)\n", BPath.from.x + 1, BPath.from.y + 1 );
-        BPath = E[ BPath.parent ];
+    for ( list< Edge >::iterator it = BPath.begin(); it != BPath.end(); ++it ) {
+        printf( "(%i, %i)\n", it->from.x + 1, it->from.y + 1 );
     }
+    
     printf( "\n" );
+
+    visualize( APath, BPath );
 
     return 0;
 }
