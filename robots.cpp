@@ -1,4 +1,16 @@
-#include "robots.h"
+/*
+    National Technical University of Athens
+    Developer: Dionysis "dionyziz" Zindros <dionyziz@gmail.com>
+*/
+
+#include <vector>
+#include <cstdio>
+#include <cassert>
+
+#include "astar.h"
+#include "visualizer.h"
+
+using namespace std;
 
 int main() {
     Point mapSize;

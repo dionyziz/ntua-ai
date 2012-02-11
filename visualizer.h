@@ -1,3 +1,8 @@
+/*
+    National Technical University of Athens
+    Developer: Dionysis "dionyziz" Zindros <dionyziz@gmail.com>
+*/
+
 #ifndef VISUALIZER_H
 #define VISUALIZER_H
 

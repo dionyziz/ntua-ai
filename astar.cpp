@@ -1,4 +1,26 @@
+/*
+    National Technical University of Athens
+    Developer: Dionysis "dionyziz" Zindros <dionyziz@gmail.com>
+*/
+
 #include "astar.h"
+
+using namespace std;
+
+class CompareEdges {
+    private:
+        vector< Edge > const & _E;
+    public:
+        CompareEdges( vector< Edge > const &E ) :_E( E ) {}
+        inline bool operator() ( const int &a, const int &b ) {
+            int diff = ( _E[ b ].distance + _E[ b ].heuristic ) - ( _E[ a ].distance + _E[ a ].heuristic );
+
+            if ( diff == 0 ) {
+                return a < b;
+            }
+            return diff > 0;
+        }
+};
 
 void enqueue(
         int a,

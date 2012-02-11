@@ -1,3 +1,8 @@
+/*
+    National Technical University of Athens
+    Developer: Dionysis "dionyziz" Zindros <dionyziz@gmail.com>
+*/
+
 #include "visualizer.h"
 
 const int LEGEND_PADDING = 10;
@@ -72,6 +77,40 @@ void drawLegend( cairo_t* cr, int y ) {
     cairo_fill( cr );
 }
 
+void drawArrow( cairo_t* cr, Point from, Point to ) {
+    fPoint a;
+    fPoint b;
+    const float ARROW_HEAD_SIZE = 0.2;
+
+    a.x = from.x; a.y = from.y;
+    b.x = to.x; b.y = to.y;
+
+    // move points to their respective block centers
+    // so that it looks better
+    a.x += 0.5;
+    a.y += 0.5;
+    b.x += 0.5;
+    b.y += 0.5;
+
+    cairo_move_to( cr, a.x, a.y );
+    cairo_line_to( cr, b.x, b.y );
+
+    if ( a.y == b.y ) { // horizontal arrow
+        float arrowX = b.x - ( b.x - a.x ) * ARROW_HEAD_SIZE;
+        cairo_move_to( cr, arrowX, b.y - ARROW_HEAD_SIZE );
+        cairo_line_to( cr, b.x, b.y );
+        cairo_move_to( cr, arrowX, b.y + ARROW_HEAD_SIZE );
+        cairo_line_to( cr, b.x, b.y );
+    }
+    else { // vertial arrow
+        float arrowY = b.y - ( b.y - a.y ) * ARROW_HEAD_SIZE;
+        cairo_move_to( cr, b.x - ARROW_HEAD_SIZE, arrowY );
+        cairo_line_to( cr, b.x, b.y );
+        cairo_move_to( cr, b.x + ARROW_HEAD_SIZE, arrowY );
+        cairo_line_to( cr, b.x, b.y );
+    }
+}
+
 void visualize( list< Edge > APath, list< Edge > BPath, vector< vector< bool > > obstacle, Point mapSize ) {
     set< pair< Point, Point > > AEdges;
     const int W = mapSize.x * SCALE_W + 2 * BORDER_W;
@@ -92,6 +131,8 @@ void visualize( list< Edge > APath, list< Edge > BPath, vector< vector< bool > >
     cairo_translate( cr, BORDER_W, BORDER_W );
     cairo_scale( cr, SCALE_W, SCALE_H );
 
+    cairo_set_line_width( cr, 1.0 / SCALE_W );
+
     // fill the image background with whiteness
     cairo_set_source_rgb( cr, 1, 1, 1 );
     cairo_rectangle( cr, 0, 0, mapSize.x, mapSize.y );
@@ -110,33 +151,30 @@ void visualize( list< Edge > APath, list< Edge > BPath, vector< vector< bool > >
     }
 
     // draw the paths followed by the robots
-    cairo_set_line_width( cr, 0.2 );
+    // cairo_set_line_width( cr, 0.1 );
 
     // robot A is red
     cairo_set_source_rgb( cr, 1, 0, 0 );
-    cairo_move_to( cr, APath.begin()->from.x + 0.5, APath.begin()->from.y + 0.5 );
     for ( list< Edge >::iterator it = APath.begin(); it != APath.end(); ++it ) {
-        cairo_move_to( cr, it->from.x + 0.5, it->from.y + 0.5 );
-        cairo_line_to( cr, it->to.x + 0.5, it->to.y + 0.5 );
+        drawArrow( cr, it->to, it->from );
         AEdges.insert( make_pair( it->from, it->to ) );
     }
     cairo_stroke( cr );
 
     // robot B is green
     cairo_set_source_rgb( cr, 0, 1, 0 );
-    cairo_move_to( cr, BPath.begin()->from.x + 0.5, BPath.begin()->from.y + 0.5 );
     for ( list< Edge >::iterator it = BPath.begin(); it != BPath.end(); ++it ) {
         if ( AEdges.find( make_pair( it->from, it->to ) ) != AEdges.end() ) {
+            // common line
             cairo_set_source_rgb( cr, 0, 0, 1 );
         }
         else {
+            // separate paths
             cairo_set_source_rgb( cr, 0, 1, 0 );
         }
-        printf( "Drawing line ( %i, %i ) -> ( %i, %i )\n", it->from.x, it->from.y, it->to.x, it->to.y );
-        cairo_move_to( cr, it->from.x + 0.5, it->from.y + 0.5 );
-        cairo_line_to( cr, it->to.x + 0.5, it->to.y + 0.5 );
+        // printf( "Drawing line ( %i, %i ) -> ( %i, %i )\n", it->from.x, it->from.y, it->to.x, it->to.y );
+        drawArrow( cr, it->to, it->from );
         cairo_stroke( cr );
-        cairo_move_to( cr, it->to.x + 0.5, it->to.y + 0.5 );
     }
 
     cairo_surface_write_to_png( surface, "robots.png" );

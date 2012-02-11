@@ -1,3 +1,8 @@
+/*
+    National Technical University of Athens
+    Developer: Dionysis "dionyziz" Zindros <dionyziz@gmail.com>
+*/
+
 #ifndef ASTAR_H
 #define ASTAR_H
 
@@ -6,13 +11,16 @@
 #include <set>
 #include <cassert>
 #include <cstdio>
-#include <cmath>
-
-using namespace std;
+#include <cstdlib>
 
 struct Point {
     int x;
     int y;
+};
+
+struct fPoint {
+    float x;
+    float y;
 };
 
 inline bool validPoint( Point a, Point mapSize ) {
@@ -60,34 +68,10 @@ struct Edge {
             heuristic( heuristic ), distance( distance ) {};
 };
 
-class CompareEdges {
-    private:
-        vector< Edge > const & _E;
-    public:
-        CompareEdges( vector< Edge > const &E ) :_E( E ) {}
-        inline bool operator() ( const int &a, const int &b ) {
-            int diff = ( _E[ b ].distance + _E[ b ].heuristic ) - ( _E[ a ].distance + _E[ a ].heuristic );
-
-            if ( diff == 0 ) {
-                return a < b;
-            }
-            return diff > 0;
-        }
-};
-
-void enqueue(
-    int,
-    vector< Edge > const &,
-    Point,
-    vector< vector< bool > > const &,
-    set< Point > const &,
-    set< int, CompareEdges > &
-);
-
-list< Edge > aStar(
+std::list< Edge > aStar(
     Point,
     Point,
-    vector< vector< bool > > const &,
+    std::vector< std::vector< bool > > const &,
     Point
 );
 

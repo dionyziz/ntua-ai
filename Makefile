@@ -6,7 +6,7 @@ all: robots
 robots: robots.o astar.o visualizer.o
 	g++ -o robots ${LDFLAGS} robots.o astar.o visualizer.o
 
-robots.o: robots.cpp robots.h astar.h visualizer.h
+robots.o: robots.cpp astar.h visualizer.h
 	g++ -c robots.cpp ${CFLAGS} -o robots.o
 
 astar.o: astar.cpp astar.h
