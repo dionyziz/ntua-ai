@@ -1,4 +1,3 @@
 robots
-robots-short
-robots.o
 robots.png
+*.o
